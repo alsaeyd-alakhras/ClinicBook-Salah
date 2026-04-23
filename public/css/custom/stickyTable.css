@@ -1,0 +1,74 @@
+.table-container {
+    position: relative;
+}
+
+table.sticky {
+    width: 100%;
+    border-collapse: collapse;
+    display: block;
+    overflow: auto;
+    height: 450px;
+}
+
+table.sticky thead {
+    background-color: var(--bs-facebook);
+    position: sticky;
+    top: -3px;
+    z-index: 4; /* تأكد من بقاء الرأس فوق بقية المحتوى */
+}
+table.sticky tfoot {
+    outline: 1px solid #06060675;
+    background-color: var(--bs-facebook);
+    position: sticky;
+    bottom: -3px;
+    z-index: 3; /* تأكد من بقاء الرأس فوق بقية المحتوى */
+}
+tfoot td{
+    font-weight: 800 !important;
+}
+
+
+table.sticky tbody {
+    display: table-row-group;
+    min-height: calc(100vh - 219px); /* تعيين الارتفاع الأقصى للجزء القابل للتمرير */
+    overflow-y: auto; /* السماح بالتمرير العمودي */
+}
+
+table.sticky tbody tr {
+    display: table-row;
+    width: 100%;
+    table-layout: fixed;
+}
+
+th, td {
+    border-color: #06060675 !important;
+}
+
+th{
+    font-weight: 800 !important;
+    color: white !important;
+    white-space: nowrap;
+    text-align: right !important;
+}
+
+td{
+    font-weight: 600 !important;
+    white-space: nowrap;
+}
+
+
+th.sticky,td.sticky {
+    position: -webkit-sticky; /* Safari */
+    position: sticky;
+    right: 0;
+    z-index: 3; /* تأكد من أن العمود المثبت يظهر فوق الأعمدة الأخرى */
+    background: var(--bs-facebook);
+}
+tbody td.sticky {
+    background: white; 
+    border-color: #06060675 !important;
+}
+th.sticky {
+    background-color: var(--bs-facebook) !important;
+}
+

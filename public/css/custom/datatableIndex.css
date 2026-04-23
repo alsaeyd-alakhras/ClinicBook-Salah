@@ -1,0 +1,74 @@
+body{
+    /* font-family: 'Cairo', sans-serif; */
+    font-family: 'Almarai', sans-serif !important;
+}
+.main-content{
+    margin: 15px 0 0 0 !important;
+}
+table.dataTable th:not(.sticky) {
+    position: relative !important;
+}
+table.dataTable th, table.dataTable td {
+    box-sizing: content-box !important;
+    white-space: nowrap !important;
+}
+table.dataTable th .filter-dropdown{
+    position: absolute;
+    bottom: -2px;
+    left: 2px;
+}
+tbody td{
+    padding: 2px 5px !important;
+    color: #000 !important;
+    font-size: 14px !important;
+}
+/* تعطيل مؤشر الفرز لرأس العمود */
+th.no-sort::after {
+    display: none !important;
+}
+.breadcrumb{
+    display: none !important;
+}
+.filter-dropdown{
+    display: none;
+}
+table .dropdown-menu.show {
+    width: 245px;
+}
+.dropdown-menu.show  .search-checkbox{
+    padding: 2px 7px !important;
+    width: 70% !important;
+    margin: 0 !important;
+}
+.checkbox-list{
+    overflow: auto;
+    max-height: 200px;
+    max-width: 246px;
+}
+.dt-layout-row{
+    margin: 0 !important;
+}
+.dt-search{
+    display: none !important;
+}
+.organization{
+    width: 130px !important;
+    overflow: hidden;
+    display: block;
+
+    transition: all 0.5s ease-in-out;
+}
+.organization:hover {
+    width: 100% !important;
+}
+.btn-filter{
+    padding: 2px 6px !important;
+    margin: 4px 3px !important;
+}
+.searchable-checkbox{
+    width: 100%;
+}
+td.active {
+    border: 2px solid #007bff;
+    background-color: #e7f1ff !important;
+}
