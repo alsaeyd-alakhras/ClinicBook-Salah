@@ -22,26 +22,18 @@
         <div class="navbar-nav-right d-flex align-items-center" id="navbar-collapse">
             <ul class="flex-row navbar-nav align-items-center ms-auto">
                 {{ $extra_nav ?? '' }}
-                @if(Auth::user()->can('view', 'App\\Models\\Office') || Auth::user()->can('view', 'App\\Models\\Institution'))
+                @if(Auth::user()->can('view', 'App\\Models\\Booking'))
                     <li class="nav-item dropdown me-2">
                         <a class="nav-link btn btn-text-secondary btn-icon rounded-pill dropdown-toggle hide-arrow"
                             href="javascript:void(0);" data-bs-toggle="dropdown" aria-expanded="false" title="البيانات">
                             <i class="ti ti-database ti-md"></i>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
-                            @can('view', 'App\\Models\\Office')
+                            @can('view', 'App\\Models\\Booking')
                                 <li>
-                                    <a class="dropdown-item" href="{{ route('dashboard.offices.index') }}">
-                                        <i class="fa-solid fa-building me-2"></i>
-                                        <span class="align-middle">المكاتب</span>
-                                    </a>
-                                </li>
-                            @endcan
-                            @can('view', 'App\\Models\\Institution')
-                                <li>
-                                    <a class="dropdown-item" href="{{ route('dashboard.institutions.index') }}">
-                                        <i class="fa-solid fa-landmark me-2"></i>
-                                        <span class="align-middle">المؤسسات</span>
+                                    <a class="dropdown-item" href="{{ route('dashboard.bookings.index') }}">
+                                        <i class="fa-solid fa-calendar-check me-2"></i>
+                                        <span class="align-middle">سجل الحجوزات</span>
                                     </a>
                                 </li>
                             @endcan
@@ -472,6 +464,13 @@
                                 <i class="ti ti-settings me-3 ti-md"></i><span class="align-middle">الإعدادات</span>
                             </a>
                         </li>
+                        @can('view', 'App\\Models\\ClinicSetting')
+                            <li>
+                                <a class="dropdown-item" href="{{ route('dashboard.settings.index') }}">
+                                    <i class="fa-solid fa-sliders me-3"></i><span class="align-middle">إعدادات العيادة</span>
+                                </a>
+                            </li>
+                        @endcan
                         <li>
                             <div class="px-2 pt-2 pb-1 d-grid">
                                 <form action="{{ route('logout') }}" method="post">

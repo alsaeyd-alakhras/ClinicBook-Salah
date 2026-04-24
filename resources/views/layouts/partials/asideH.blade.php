@@ -1,7 +1,7 @@
 <aside id="layout-menu" class="flex-grow-0 layout-menu-horizontal menu-horizontal menu bg-menu-theme">
     <div class="container-xxl d-flex h-100">
         <ul class="pb-2 menu-inner pb-xl-0">
-            <li class="menu-item {{ request()->is('/') ? 'active' : '' }}">
+            <li class="menu-item {{ request()->is('dashboard') ? 'active' : '' }}">
                 <a href="{{ route('dashboard.home') }}" class="menu-link">
                     <i class="fa-solid fa-house me-2"></i>
                     <div data-i18n="home">الرئيسية</div>
@@ -15,11 +15,11 @@
                 </a>
             </li>
             @endcan --}}
-            @can('view','App\\Models\AidDistribution')
-            <li class="menu-item {{ request()->is('aid-distributions/*') || request()->is('aid-distributions') ? 'active' : '' }}">
-                <a href="{{ route('dashboard.aid-distributions.index') }}" class="menu-link">
-                    <i class="fa-solid fa-hand-holding-heart me-2"></i>
-                    <div data-i18n="aid_distributions">سجل المساعدات</div>
+            @can('view','App\\Models\Booking')
+            <li class="menu-item {{ request()->is('bookings/*') || request()->is('bookings') ? 'active' : '' }}">
+                <a href="{{ route('dashboard.bookings.index') }}" class="menu-link">
+                    <i class="fa-solid fa-calendar-check me-2"></i>
+                    <div data-i18n="bookings">سجل الحجوزات</div>
                 </a>
             </li>
             @endcan
@@ -39,47 +39,6 @@
                 </a>
             </li>
             @endcan --}}
-            <li class="menu-item">
-                <a href="javascript:void(0)" class="menu-link menu-toggle">
-                    <i class="fa-solid fa-database me-2"></i>
-
-                    <div data-i18n="Pages">البيانات</div>
-                </a>
-                <ul class="menu-sub">
-                    @can('view','App\\Models\Office')
-                    <li class="menu-item {{ request()->is('offices/*') || request()->is('offices') ? 'active' : '' }}">
-                        <a href="{{ route('dashboard.offices.index') }}" class="menu-link">
-                            <i class="fa-solid fa-building me-2"></i>
-                            <div data-i18n="offices">المكاتب</div>
-                        </a>
-                    </li>
-                    @endcan
-                    @can('view','App\\Models\Institution')
-                    <li class="menu-item {{ request()->is('institutions/*') || request()->is('institutions') ? 'active' : '' }}">
-                        <a href="{{ route('dashboard.institutions.index') }}" class="menu-link">
-                            <i class="fa-solid fa-landmark me-2"></i>
-                            <div data-i18n="institutions">المؤسسات</div>
-                        </a>
-                    </li>
-                    @endcan
-                    @can('view','App\\Models\Project')
-                    <li class="menu-item {{ request()->is('projects/*') || request()->is('projects') ? 'active' : '' }}">
-                        <a href="{{ route('dashboard.projects.index') }}" class="menu-link">
-                            <i class="fa-solid fa-diagram-project me-2"></i>
-                            <div data-i18n="projects">المشاريع</div>
-                        </a>
-                    </li>
-                    @endcan
-                    @can('view','App\\Models\AidItem')
-                    <li class="menu-item {{ request()->is('aid-items/*') || request()->is('aid-items') ? 'active' : '' }}">
-                        <a href="{{ route('dashboard.aid-items.index') }}" class="menu-link">
-                            <i class="fa-solid fa-boxes me-2"></i>
-                            <div data-i18n="items">أنواع المساعدات</div>
-                        </a>
-                    </li>
-                    @endcan
-                </ul>
-            </li>
             <li class="menu-item">
                 <a href="javascript:void(0)" class="menu-link menu-toggle">
                     <i class="fa-solid fa-gear me-2"></i>
@@ -103,11 +62,11 @@
                         </a>
                     </li>
                     @endcan
-                    @can('view','App\\Models\Currency')
-                    <li class="menu-item {{ request()->is('currencies/*') || request()->is('currencies') ? 'active' : '' }}">
-                        <a href="{{ route('dashboard.currencies.index') }}" class="menu-link">
-                            <i class="fa-solid fa-coins me-2"></i>
-                            <div data-i18n="currencies">العملات</div>
+                    @can('view','App\\Models\ClinicSetting')
+                    <li class="menu-item {{ request()->is('settings/*') || request()->is('settings') ? 'active' : '' }}">
+                        <a href="{{ route('dashboard.settings.index') }}" class="menu-link">
+                            <i class="fa-solid fa-sliders me-2"></i>
+                            <div data-i18n="clinic_settings">إعدادات العيادة</div>
                         </a>
                     </li>
                     @endcan

@@ -48,29 +48,6 @@
                                 placeholder="****" required />
                         @endif
                     </div>
-                    @if(!isset($settings_profile))
-                    <div class="mb-4 form-group col-md-4">
-                        <label for="user_type">نوع المستخدم</label>
-                        <select class="text-center form-select" name="user_type" id="user_type"
-                            data-placeholder="اختر شعبة">
-                            <option value="" label="فتح القائمة">
-                            <option value="employee" @selected($user->user_type == 'employee')>الموظف</option>
-                            <option value="admin" @selected($user->user_type == 'admin')>المدير</option>
-                        </select>
-                    </div>
-                    <div class="mb-4 form-group col-md-4">
-                        <label for="office">المكتب</label>
-                        <select class="text-center form-select" name="office_id" id="office">
-                            <option value="" label="فتح القائمة">
-                                @foreach ($offices as $office)
-                                    <option value="{{ $office->id }}" @selected($office->id == $user->office_id)>
-                                        {{ $office->name }}
-                                    </option>
-                                @endforeach
-                        </select>
-                    </div>
-                    @endif
-                    <x-form.input type="hidden" name="is_active" value="1" />
                 </div>
                 @if(!isset($settings_profile))
                     <div class="row">
@@ -140,8 +117,6 @@
         <script>
             $(document).ready(function () {
                 const isCreateUserForm = @json(!isset($btn_label));
-                const employeeDefaultAbilities = ['aiddistributions.view', 'aiddistributions.create', 'aiddistributions.update'];
-
                 // عند تغيير حالة Master Checkbox
                 $('.master-checkbox').on('change', function () {
                     // الحصول على المجموعة المرتبطة بـ Master Checkbox
@@ -159,33 +134,6 @@
                         $(this).prop('checked', allChecked);
                     });
                 }
-
-                function applyEmployeeDefaultAbilitiesOnCreate() {
-                    if (!isCreateUserForm || $('#user_type').val() !== 'employee') {
-                        return;
-                    }
-
-                    $('input[name="abilities[]"]').each(function () {
-                        const role = $(this).val();
-                        if (employeeDefaultAbilities.includes(role)) {
-                            $(this).prop('checked', true);
-                        }
-                    });
-
-                    syncMasterCheckboxes();
-                }
-
-                $('#user_type').on('change', function () {
-                    const userType = $(this).val();
-                    if (userType != 'employee') {
-                        $('#office').prop('disabled', true);
-                    } else {
-                        $('#office').prop('disabled', false);
-                    }
-                    applyEmployeeDefaultAbilitiesOnCreate();
-                });
-
-                $('#user_type').trigger('change');
             });
 
         </script>

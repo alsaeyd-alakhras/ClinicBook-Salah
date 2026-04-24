@@ -26,7 +26,6 @@
                             <th>البريد الالكتروني</th>
                             <th>الحالة</th>
                             <th>أخر موعد تواجد</th>
-                            <th>المكتب</th>
                             <th>الحدث</th>
                         </tr>
                     </thead>
@@ -55,7 +54,6 @@
                                 @endif
                             </td>
                             <td>{{$user->last_activity}}</td>
-                            <td>{{$user->office?->name}}</td>
                             <td>
                                 <div class="dropdown">
                                     <button type="button" class="btn p-0 dropdown-toggle hide-arrow"

@@ -2,32 +2,25 @@
 
 namespace App\Providers;
 
-use App\Models\AidDistribution;
+use App\Models\Booking;
+use App\Models\ClinicDayConfig;
+use App\Models\ClinicSetting;
 use App\Models\Constant;
-use App\Models\Currency;
-use App\Models\Executive;
-use App\Models\Institution;
-use App\Models\Office;
-use App\Models\Project;
 use App\Models\User;
-use App\Observers\AidDistributionObserver;
+use App\Observers\ClinicDayConfigObserver;
+use App\Observers\ClinicSettingObserver;
 use App\Observers\ConstantObserver;
-use App\Observers\CurrencyObserver;
-use App\Observers\ExecutiveObserver;
-use App\Observers\InstitutionObserver;
-use App\Observers\OfficeObserver;
-use App\Observers\ProjectObserver;
 use App\Observers\UserObserver;
-use App\Policies\AidDistributionPolicy;
-use App\Policies\InstitutionPolicy;
-use App\Policies\ProjectPolicy;
+use App\Policies\BookingPolicy;
+use App\Policies\ClinicDayConfigPolicy;
+use App\Policies\ClinicSettingPolicy;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
-    public const HOME = '/';
+    public const HOME = '/dashboard';
 
     /**
      * Register any application services.
@@ -35,7 +28,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         //
-        $this->app->bind('abilities', function() {
+        $this->app->bind('abilities', function () {
             return include base_path('data/abilities.php');
         });
     }
@@ -53,14 +46,13 @@ class AppServiceProvider extends ServiceProvider
         // ]);
         Paginator::useBootstrapFive();
 
-
-        //Authouration
+        // Authouration
         Gate::before(function ($user, $ability) {
-            if($user instanceof User) {
-                if($user->super_admin) {
+            if ($user instanceof User) {
+                if ($user->super_admin) {
                     return true;
                 }
-                if($user->user_type == 'employee') {
+                if ($user->user_type == 'employee') {
                     // if(in_array($ability,[])){
                     //     return true;
                     // }
@@ -69,35 +61,31 @@ class AppServiceProvider extends ServiceProvider
         });
         // the Authorization for Report Page
         Gate::define('admins.super', function ($user) {
-            if($user instanceof User) {
-                if($user->roles->contains('role_name', 'admins.super')) {
+            if ($user instanceof User) {
+                if ($user->roles->contains('role_name', 'admins.super')) {
                     return true;
                 }
+
                 return false;
             }
         });
         Gate::define('reports.view', function ($user) {
-            if($user instanceof User) {
-                if($user->roles->contains('role_name', 'reports.view')) {
+            if ($user instanceof User) {
+                if ($user->roles->contains('role_name', 'reports.view')) {
                     return true;
                 }
+
                 return false;
             }
         });
-        Gate::policy(AidDistribution::class, AidDistributionPolicy::class);
-        Gate::policy(Institution::class, InstitutionPolicy::class);
-        Gate::policy(Project::class, ProjectPolicy::class);
-
-
-
+        Gate::policy(Booking::class, BookingPolicy::class);
+        Gate::policy(ClinicSetting::class, ClinicSettingPolicy::class);
+        Gate::policy(ClinicDayConfig::class, ClinicDayConfigPolicy::class);
 
         // Observe For Models
         User::observe(UserObserver::class);
         Constant::observe(ConstantObserver::class);
-        Currency::observe(CurrencyObserver::class);
-        Office::observe(OfficeObserver::class);
-        Institution::observe(InstitutionObserver::class);
-        AidDistribution::observe(AidDistributionObserver::class);
-        Project::observe(ProjectObserver::class);
+        ClinicSetting::observe(ClinicSettingObserver::class);
+        ClinicDayConfig::observe(ClinicDayConfigObserver::class);
     }
 }

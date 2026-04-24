@@ -38,16 +38,18 @@ class FortifyServiceProvider extends ServiceProvider
         // }
 
         // if want to coustom login page
-        $this->app->instance(LoginResponse::class, new class implements LoginResponse {
+        $this->app->instance(LoginResponse::class, new class implements LoginResponse
+        {
             public function toResponse($request)
             {
                 // if(Config::get('fortify.guard') == 'employee'){
                 //     return redirect()->intended('/em/home');
                 // }
-                return redirect()->intended('/');
+                return redirect()->intended('/dashboard');
             }
         });
-        $this->app->instance(LogoutResponse::class, new class implements LogoutResponse {
+        $this->app->instance(LogoutResponse::class, new class implements LogoutResponse
+        {
             public function toResponse($request)
             {
                 Cache::flush();
@@ -69,22 +71,22 @@ class FortifyServiceProvider extends ServiceProvider
             return view('auth.login');
         });
 
-
         Fortify::authenticateUsing(function (Request $request) {
             $user = User::where('username', $request->username)
-                        ->orWhere('email', $request->username)
-                        ->first();
+                ->orWhere('email', $request->username)
+                ->first();
 
             if ($user && Hash::check($request->password, $user->password)) {
                 ActivityLogService::log(
                     'Login',
                     'User',
-                    "تم تسجيل دخول",
+                    'تم تسجيل دخول',
                     null,
                     null,
                     $user->id,
                     $user->name
                 );
+
                 return $user;
             }
 
@@ -96,7 +98,6 @@ class FortifyServiceProvider extends ServiceProvider
             // }
         });
 
-
         Fortify::createUsersUsing(CreateNewUser::class);
         Fortify::updateUserProfileInformationUsing(UpdateUserProfileInformation::class);
         Fortify::updateUserPasswordsUsing(UpdateUserPassword::class);
@@ -104,6 +105,7 @@ class FortifyServiceProvider extends ServiceProvider
 
         RateLimiter::for('login', function (Request $request) {
             $throttleKey = Str::transliterate(Str::lower($request->input(Fortify::username())).'|'.$request->ip());
+
             return Limit::perMinute(5)->by($throttleKey);
         });
 

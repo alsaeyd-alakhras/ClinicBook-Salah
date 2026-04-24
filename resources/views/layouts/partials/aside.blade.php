@@ -18,7 +18,7 @@
             <span class="menu-header-text" data-i18n="Apps &amp; Pages">العامة</span>
         </li>
         <!-- Page -->
-        <li class="menu-item {{ request()->is('/') ? 'active' : '' }}">
+        <li class="menu-item {{ request()->is('dashboard') ? 'active' : '' }}">
             <a href="{{ route('dashboard.home') }}" class="menu-link">
                 <i class="fa-solid fa-house me-2"></i>
                 <div data-i18n="home">الرئيسية</div>

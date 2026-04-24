@@ -114,6 +114,13 @@
         ];
     @endphp
 
+    <div class="mb-3 d-flex align-items-center justify-content-between">
+        <div>
+            <h4 class="mb-1">سجل المساعدات</h4>
+            <p class="mb-0 text-muted">فلترة سريعة وتصدير مباشر حسب النتائج الظاهرة في الجدول.</p>
+        </div>
+    </div>
+
     <div class="shadow-lg enhanced-card">
         <div class="enhanced-card-body">
             <div class="col-12" style="padding: 0;">

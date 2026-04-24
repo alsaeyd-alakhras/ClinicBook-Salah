@@ -28,9 +28,6 @@ class User extends Authenticatable
         'last_activity',
         'avatar',
         'super_admin',
-        'office_id',
-        'user_type',
-        'is_active',
     ];
 
     /**
@@ -60,22 +57,6 @@ class User extends Authenticatable
     public function roles(): HasMany
     {
         return $this->hasMany(RoleUser::class, 'user_id', 'id');
-    }
-
-
-    public function office()
-    {
-        return $this->belongsTo(Office::class);
-    }
-
-    public function distributions()
-    {
-        return $this->hasMany(AidDistribution::class, 'created_by');
-    }
-
-    public function cancelledDistributions()
-    {
-        return $this->hasMany(AidDistribution::class, 'cancelled_by');
     }
 
 

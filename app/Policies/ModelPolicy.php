@@ -4,6 +4,7 @@ namespace App\Policies;
 
 use App\Models\User;
 use Illuminate\Support\Str;
+
 class ModelPolicy
 {
     protected const EMPLOYEE_ALLOWED_ABILITIES = [
@@ -11,6 +12,9 @@ class ModelPolicy
         'aiddistributions.create',
         'aiddistributions.update',
         'aiddistributions.import',
+        'bookings.view',
+        'bookings.update',
+        'bookings.confirm',
         'projects.view',
         'projects.create',
         'projects.update',
@@ -26,7 +30,9 @@ class ModelPolicy
     {
         //
     }
-    public function __call($name, $arguments){
+
+    public function __call($name, $arguments)
+    {
         $class_name = str_replace('Policy', '', class_basename($this));
         $class_name = Str::plural(Str::lower($class_name));
 
@@ -34,7 +40,7 @@ class ModelPolicy
             $name = 'view';
         }
 
-        $ability = $class_name . '.' . Str::kebab($name);
+        $ability = $class_name.'.'.Str::kebab($name);
         $user = $arguments[0];
         if ($user instanceof User) {
             if (
@@ -44,7 +50,7 @@ class ModelPolicy
                 return true;
             }
 
-            return ($user->roles->where('role_name',$ability)->first() == null) ? false : true;
+            return ($user->roles->where('role_name', $ability)->first() == null) ? false : true;
         }
     }
 }

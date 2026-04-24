@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
-use App\Models\Office;
 use App\Models\RoleUser;
 use App\Models\User;
 use App\Services\ActivityLogService;
@@ -15,12 +14,6 @@ use Illuminate\Support\Facades\Storage;
 
 class UserController extends Controller
 {
-    private const EMPLOYEE_DEFAULT_ABILITIES = [
-        'aiddistributions.view',
-        'aiddistributions.create',
-        'aiddistributions.update',
-    ];
-
     /**
      * Display a listing of the resource.
      */
@@ -28,6 +21,7 @@ class UserController extends Controller
     {
         $this->authorize('view', User::class);
         $users = User::paginate(10);
+
         return view('dashboard.users.index', compact('users'));
     }
 
@@ -37,9 +31,9 @@ class UserController extends Controller
     public function create(Request $request)
     {
         $this->authorize('create', User::class);
-        $user = new User();
-        $offices = Office::get();
-        return view('dashboard.users.create', compact('user', 'offices'));
+        $user = new User;
+
+        return view('dashboard.users.create', compact('user'));
     }
 
     /**
@@ -54,17 +48,10 @@ class UserController extends Controller
             'username' => 'required|string|unique:users,username',
             'password' => 'required|same:confirm_password',
             'confirm_password' => 'required|same:password',
-            'office_id' => 'sometimes|exists:offices,id',
-            'user_type' => 'required|in:admin,employee',
-            'is_active' => 'required|boolean',
         ], [
             'password.same' => 'كلمة المرور غير متطابقة',
             'confirm_password.same' => 'كلمة المرور غير متطابقة',
         ]);
-        $abilities = $this->normalizeAbilitiesForUserType(
-            $request->user_type,
-            $request->input('abilities', [])
-        );
 
         DB::beginTransaction();
         try {
@@ -74,7 +61,7 @@ class UserController extends Controller
                 $request->merge(['avatar' => $path]);
             }
             $user = User::create($request->all());
-            foreach ($abilities as $role) {
+            foreach ($request->input('abilities', []) as $role) {
                 RoleUser::create([
                     'role_name' => $role,
                     'user_id' => $user->id,
@@ -84,8 +71,10 @@ class UserController extends Controller
             DB::commit();
         } catch (\Exception $e) {
             DB::rollBack();
+
             return redirect()->back()->with('error', $e->getMessage());
         }
+
         return redirect()->route('dashboard.users.index')->with('success', 'تم اضافة مستخدم جديد');
     }
 
@@ -95,11 +84,12 @@ class UserController extends Controller
     public function show(User $user)
     {
 
-        if (Auth::user()->id != $user->id && !Auth::user()->can('view', User::class)) {
+        if (Auth::user()->id != $user->id && ! Auth::user()->can('view', User::class)) {
             abort(403);
         }
-        $profile = Auth::user()->id == $user->id && !Auth::user()->can('view', User::class) ? true : false;
+        $profile = Auth::user()->id == $user->id && ! Auth::user()->can('view', User::class) ? true : false;
         $logs = ActivityLog::where('user_id', $user->id)->orderBy('created_at', 'DESC')->paginate(20);
+
         return view('dashboard.users.show', compact('user', 'logs', 'profile'));
     }
 
@@ -109,23 +99,24 @@ class UserController extends Controller
     public function settings(Request $request)
     {
         $user = Auth::user();
-        if (Auth::user()->id != $user->id && !Auth::user()->can('update', User::class)) {
+        if (Auth::user()->id != $user->id && ! Auth::user()->can('update', User::class)) {
             abort(403);
         }
-        $btn_label = "تعديل";
+        $btn_label = 'تعديل';
         $settings_profile = true;
-        $offices = Office::get();
-        return view('dashboard.users.settings', compact('user', 'btn_label', 'settings_profile', 'offices'));
+
+        return view('dashboard.users.settings', compact('user', 'btn_label', 'settings_profile'));
     }
+
     /**
      * Show the form for editing the specified resource.
      */
     public function edit(Request $request, User $user)
     {
         $this->authorize('update', User::class);
-        $btn_label = "تعديل";
-        $offices = Office::get();
-        return view('dashboard.users.edit', compact('user', 'btn_label', 'offices'));
+        $btn_label = 'تعديل';
+
+        return view('dashboard.users.edit', compact('user', 'btn_label'));
     }
 
     /**
@@ -133,12 +124,12 @@ class UserController extends Controller
      */
     public function update(Request $request, User $user)
     {
-        if (Auth::user()->id != $user->id && !Auth::user()->can('update', User::class)) {
+        if (Auth::user()->id != $user->id && ! Auth::user()->can('update', User::class)) {
             abort(403);
         }
         $request->validate([
             'name' => 'required',
-            'username' => 'required|string|unique:users,username,' . $user->id,
+            'username' => 'required|string|unique:users,username,'.$user->id,
         ]);
         DB::beginTransaction();
         try {
@@ -156,22 +147,15 @@ class UserController extends Controller
             if (isset($request->password)) {
                 $user->update($request->all());
             }
-            $nextUserType = $request->user_type ?? $user->user_type;
-            $abilities = $this->normalizeAbilitiesForUserType(
-                $nextUserType,
-                $request->input('abilities', [])
-            );
 
             $user->update([
                 'name' => $request->name,
                 'username' => $request->username,
                 'email' => $request->email,
                 'avatar' => $avatar ?? null,
-                'office_id' => $request->office_id ?? $user->office_id,
-                'user_type' => $nextUserType,
                 'is_active' => $request->is_active ?? $user->is_active,
             ]);
-            $this->syncUserAbilities($user, $abilities);
+            $this->syncUserAbilities($user, $request->input('abilities', []));
             ActivityLogService::log(
                 'Updated',
                 'User',
@@ -187,16 +171,8 @@ class UserController extends Controller
         if (Auth::user()->id == $user->id) {
             return redirect()->route('dashboard.home')->with('success', 'تم تعديل المستخدم');
         }
+
         return redirect()->route('dashboard.users.index')->with('success', 'تم تعديل المستخدم');
-    }
-
-    private function normalizeAbilitiesForUserType(string $userType, array $abilities): array
-    {
-        if ($userType === 'employee') {
-            return array_values(array_unique(array_merge(self::EMPLOYEE_DEFAULT_ABILITIES, $abilities)));
-        }
-
-        return array_values(array_unique($abilities));
     }
 
     private function syncUserAbilities(User $user, array $abilities): void
@@ -204,7 +180,7 @@ class UserController extends Controller
         $roleOld = RoleUser::where('user_id', $user->id)->pluck('role_name')->toArray();
 
         foreach ($roleOld as $role) {
-            if (!in_array($role, $abilities, true)) {
+            if (! in_array($role, $abilities, true)) {
                 RoleUser::where('user_id', $user->id)->where('role_name', $role)->delete();
             }
         }
@@ -233,6 +209,7 @@ class UserController extends Controller
             Storage::disk('public')->delete($user->avatar);
         }
         $user->delete();
+
         return redirect()->route('dashboard.users.index')->with('success', 'تم حذف المستخدم');
     }
 }
