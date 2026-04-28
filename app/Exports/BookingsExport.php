@@ -28,6 +28,7 @@ class BookingsExport implements FromCollection, WithHeadings, WithMapping
             $row->national_id,
             $row->phone,
             $row->age,
+            $this->visitTypeLabel($row->visit_type),
             $row->status === 'ticket_received' ? 'تم الاستلام' : 'قيد الانتظار',
             optional($row->created_at)->format('Y-m-d H:i') ?? '-',
         ];
@@ -43,8 +44,14 @@ class BookingsExport implements FromCollection, WithHeadings, WithMapping
             'رقم الهوية',
             'رقم الجوال',
             'العمر',
+            'نوع الكشفية',
             'الحالة',
             'وقت التسجيل',
         ];
+    }
+
+    private function visitTypeLabel(?string $visitType): string
+    {
+        return $visitType === 'strabismus' ? 'حول' : 'أخرى';
     }
 }

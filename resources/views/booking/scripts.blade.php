@@ -8,6 +8,7 @@
         const $formCard = $('#bookingFormCard');
         const $closedCard = $('#closedCard');
         const $closedMessage = $('#closedMessage');
+        const $closedTitle = $('#closedTitle');
         const $nextOpenWrap = $('#nextOpenWrap');
         const $nextOpenText = $('#nextOpenText');
         const $myBookingsCard = $('#myBookingsCard');
@@ -15,6 +16,7 @@
         const $messageBox = $('#messageBox');
         const $submitBtn = $('#submitBtn');
         const $bookingForm = $('#bookingForm');
+        const $visitTypeNotice = $('#visitTypeNotice');
 
         const state = {
             fingerprint: null,
@@ -97,6 +99,7 @@
             const nationalId = $('#national_id').val().trim();
             const phone = $('#phone').val().trim();
             const age = Number($('#age').val());
+            const visitType = $('input[name="visit_type"]:checked').val();
 
             if (!patientName || patientName.length > 100) {
                 setFieldError('patient_name', 'الاسم مطلوب وبحد أقصى 100 حرف.');
@@ -115,6 +118,11 @@
 
             if (!Number.isInteger(age) || age < 1 || age > 120) {
                 setFieldError('age', 'العمر يجب أن يكون بين 1 و 120.');
+                valid = false;
+            }
+
+            if (!visitType) {
+                setFieldError('visit_type', 'يرجى اختيار نوع الكشفية.');
                 valid = false;
             }
 
@@ -137,13 +145,29 @@
             $statusCard.addClass('fade-update');
             setTimeout(() => $statusCard.removeClass('fade-update'), 420);
 
+            const myBookingsCount = Array.isArray(data.my_bookings) ? data.my_bookings.length : 0;
+            const reachedLimit = myBookingsCount >= 2;
+
+            if (data.is_open && reachedLimit) {
+                $formCard.hide();
+                $closedCard.show();
+                $closedTitle.text('⚠️ تنبيه الحد الأعلى للحالات');
+                $closedMessage.text('لقد وصلت إلى الحد الأعلى المسموح به من الحالات لهذا اليوم. لا يمكنك تسجيل حالات إضافية.');
+                $nextOpenWrap.hide();
+                renderVisitTypes(data.visit_types || {});
+                return;
+            }
+
             if (data.is_open) {
                 $formCard.show();
                 $closedCard.hide();
                 $nextOpenWrap.hide();
+                renderVisitTypes(data.visit_types || {});
             } else {
                 $formCard.hide();
                 $closedCard.show();
+                $closedTitle.text('🔒 الحجز مغلق حالياً');
+                renderVisitTypes(data.visit_types || {});
                 $closedMessage.text(data.closed_message || 'الحجز مغلق حالياً.');
 
                 if (data.next_opening_ar) {
@@ -153,6 +177,34 @@
                     $nextOpenText.text('-');
                     $nextOpenWrap.hide();
                 }
+            }
+        }
+
+        function renderVisitTypes(visitTypes) {
+            const notices = [];
+
+            ['strabismus', 'other'].forEach((type) => {
+                const info = visitTypes[type] || {};
+                const $input = $(`input[name="visit_type"][value="${type}"]`);
+                const $option = $(`.visit-type-option[data-type="${type}"]`);
+                const disabled = Boolean(info.is_closed) || Number(info.remaining || 0) <= 0;
+
+                $input.prop('disabled', disabled);
+                $option.toggleClass('disabled', disabled);
+
+                if (disabled && $input.is(':checked')) {
+                    $input.prop('checked', false);
+                }
+
+                if (info.is_closed && info.closed_message) {
+                    notices.push(info.closed_message);
+                }
+            });
+
+            if (notices.length) {
+                $visitTypeNotice.html(notices.join('<br>')).show();
+            } else {
+                $visitTypeNotice.hide().empty();
             }
         }
 
@@ -167,7 +219,7 @@
             const html = state.myBookings.map((b, index) => {
                 return `
                     <div class="my-booking-item">
-                        <div>${index + 1}. ${b.patient_name}</div>
+                        <div>${index + 1}. ${b.patient_name} <small>(${b.visit_type_label || 'أخرى'})</small></div>
                         <button class="cancel-btn" data-id="${b.id}" data-name="${b.patient_name}">اعتذار</button>
                     </div>
                 `;
@@ -208,6 +260,7 @@
                     national_id: $('#national_id').val().trim(),
                     phone: $('#phone').val().trim(),
                     age: $('#age').val(),
+                    visit_type: $('input[name="visit_type"]:checked').val(),
                     fingerprint: state.fingerprint,
                     _token: $('meta[name="csrf-token"]').attr('content')
                 }

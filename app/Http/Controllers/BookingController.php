@@ -36,6 +36,7 @@ class BookingController extends Controller
             'national_id' => ['required', 'regex:/^\d{9,10}$/'],
             'phone' => ['required', 'regex:/^05\d{8}$/'],
             'age' => ['required', 'integer', 'min:1', 'max:120'],
+            'visit_type' => ['required', 'in:strabismus,other'],
             'fingerprint' => ['nullable', 'string', 'max:255'],
         ]);
 
@@ -55,6 +56,8 @@ class BookingController extends Controller
                     'id' => $booking->id,
                     'booking_date' => optional($booking->booking_date)->toDateString(),
                     'patient_name' => $booking->patient_name,
+                    'visit_type' => $booking->visit_type,
+                    'visit_type_label' => $this->bookingService->visitTypeLabel($booking->visit_type),
                     'created_at' => optional($booking->created_at)->toISOString(),
                 ],
             ]);
@@ -123,6 +126,9 @@ class BookingController extends Controller
         }
         if (str_contains($message, 'الجوال')) {
             return 'phone';
+        }
+        if (str_contains($message, 'حالات')) {
+            return 'visit_type';
         }
 
         return null;

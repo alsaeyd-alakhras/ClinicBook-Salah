@@ -122,13 +122,21 @@
                 <label class="form-label">بحث بالاسم</label>
                 <input type="text" id="patient_name" class="form-control" placeholder="اكتب الاسم...">
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label class="form-label">من تاريخ</label>
                 <input type="date" id="from_date" class="form-control" value="{{ $defaultDate }}">
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label class="form-label">إلى تاريخ</label>
                 <input type="date" id="to_date" class="form-control" value="{{ $defaultDate }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">نوع الكشفية</label>
+                <select id="visit_type" class="form-control">
+                    <option value="">الكل</option>
+                    <option value="strabismus">حول</option>
+                    <option value="other">أخرى</option>
+                </select>
             </div>
             <div class="col-md-2">
                 <label class="form-label">الحالة</label>
@@ -138,13 +146,13 @@
                     <option value="ticket_received">تم الاستلام</option>
                 </select>
             </div>
-            <div class="col-md-1 d-grid">
-                <button id="filterBtn" class="btn btn-primary">بحث</button>
-            </div>
         </div>
-        <div class="row g-2 mt-1">
+        <div class="row justify-content-between g-2 mt-1">
             <div class="col-md-2 d-grid">
                 <button id="resetBtn" class="btn btn-outline-secondary">إعادة تعيين</button>
+            </div>
+            <div class="col-md-1 d-grid">
+                <button id="filterBtn" class="btn btn-primary">بحث</button>
             </div>
         </div>
     </div>
@@ -162,6 +170,7 @@
                             <th>الهوية</th>
                             <th>الجوال</th>
                             <th>العمر</th>
+                            <th>نوع الكشفية</th>
                             <th>وقت التسجيل</th>
                             <th>الحالة</th>
                             <th>إجراء</th>
@@ -193,6 +202,7 @@
                         d.to_date = $('#to_date').val();
                         d.patient_name = $('#patient_name').val();
                         d.status = $('#status').val();
+                        d.visit_type = $('#visit_type').val();
                     }
                 },
                 columns: [
@@ -203,6 +213,7 @@
                     { data: 'national_id' },
                     { data: 'phone' },
                     { data: 'age' },
+                    { data: 'visit_type_label' },
                     { data: 'created_at' },
                     {
                         data: 'status',
@@ -225,9 +236,9 @@
                     }
                 ],
                 columnDefs: [
-                    { targets: [0, 2, 3, 4, 5, 6, 7, 8, 9], className: 'text-center' },
+                    { targets: [0, 2, 3, 4, 5, 6, 7, 8, 9, 10], className: 'text-center' },
                     { targets: [1], className: 'name-col' },
-                    { targets: [2, 4, 5, 7], render: function (data, type) { return type === 'display' ? `<span class="bookings-ltr">${data ?? '-'}</span>` : data; } }
+                    { targets: [2, 4, 5, 8], render: function (data, type) { return type === 'display' ? `<span class="bookings-ltr">${data ?? '-'}</span>` : data; } }
                 ]
             });
 
@@ -258,6 +269,7 @@
                 $('#to_date').val('');
                 $('#patient_name').val('');
                 $('#status').val('');
+                $('#visit_type').val('');
                 table.ajax.reload();
             });
 
@@ -278,7 +290,8 @@
                     from_date: $('#from_date').val() || '',
                     to_date: $('#to_date').val() || '',
                     patient_name: $('#patient_name').val() || '',
-                    status: $('#status').val() || ''
+                    status: $('#status').val() || '',
+                    visit_type: $('#visit_type').val() || ''
                 });
 
                 return `{{ route('dashboard.bookings.export') }}?${params.toString()}`;

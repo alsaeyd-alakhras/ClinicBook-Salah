@@ -29,6 +29,7 @@ class BookingController extends Controller
                 ->addIndexColumn()
                 ->editColumn('booking_date', fn (Booking $booking) => optional($booking->booking_date)->format('Y-m-d'))
                 ->editColumn('created_at', fn (Booking $booking) => optional($booking->created_at)->format('Y-m-d H:i'))
+                ->addColumn('visit_type_label', fn (Booking $booking) => $this->bookingService->visitTypeLabel($booking->visit_type))
                 ->addColumn('status_label', fn (Booking $booking) => $booking->status === 'ticket_received' ? 'تم الاستلام' : 'قيد الانتظار')
                 ->addColumn('actions', fn (Booking $booking) => $booking->id)
                 ->rawColumns(['actions'])
@@ -72,6 +73,7 @@ class BookingController extends Controller
                     'from_date' => $request->from_date,
                     'to_date' => $request->to_date,
                     'patient_name' => $request->patient_name,
+                    'visit_type' => $request->visit_type,
                     'status' => $request->status,
                 ],
             ], [], [
@@ -108,6 +110,10 @@ class BookingController extends Controller
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);
+        }
+
+        if ($request->filled('visit_type')) {
+            $query->where('visit_type', $request->visit_type);
         }
 
         if (! $request->filled('from_date') && ! $request->filled('to_date')) {

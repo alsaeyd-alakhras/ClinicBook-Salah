@@ -11,6 +11,9 @@ use Illuminate\Support\Facades\DB;
 
 class BookingService
 {
+    public const VISIT_TYPE_STRABISMUS = 'strabismus';
+    public const VISIT_TYPE_OTHER = 'other';
+
     public function getActiveBookingDate(): ?Carbon
     {
         $now = now();
@@ -35,12 +38,24 @@ class BookingService
             return false;
         }
 
-        return $this->getRemainingSlots($date) > 0;
+        return collect($this->visitTypes())
+            ->contains(fn (string $visitType) => $this->isVisitTypeAvailable($date, $visitType, $dayContext));
     }
 
-    public function getRemainingSlots(Carbon $date): int
+    public function getRemainingSlots(Carbon $date, ?string $visitType = null): int
     {
         $dayContext = $this->getDayContext($date);
+
+        if ($visitType) {
+            $capacity = (int) ($dayContext['type_capacities'][$visitType] ?? 0);
+            $booked = Booking::query()
+                ->whereDate('booking_date', $date->toDateString())
+                ->where('visit_type', $visitType)
+                ->count();
+
+            return max(0, $capacity - $booked);
+        }
+
         $capacity = (int) ($dayContext['capacity'] ?? 0);
         $booked = Booking::query()->whereDate('booking_date', $date->toDateString())->count();
 
@@ -67,6 +82,7 @@ class BookingService
             }
 
             $dateKey = $date->toDateString();
+            $visitType = $this->normalizeVisitType($data['visit_type'] ?? null);
 
             if (Booking::query()->whereDate('booking_date', $dateKey)->where('national_id', $data['national_id'])->lockForUpdate()->exists()) {
                 throw new \DomainException('هذه الهوية محجوزة مسبقاً لهذا اليوم.', 409);
@@ -80,10 +96,18 @@ class BookingService
                 throw new \DomainException('لقد سجلت الحد المسموح به من الحالات من هذا الجهاز. إذا كنت تريد تسجيل حالة إضافية، يرجى المحاولة من جهاز آخر.', 429);
             }
 
-            $capacity = (int) ($dayContext['capacity'] ?? 0);
-            $currentCount = Booking::query()->whereDate('booking_date', $dateKey)->lockForUpdate()->count();
+            if ($dayContext['type_closed'][$visitType] ?? false) {
+                throw new \DomainException($this->getVisitTypeClosedMessage($visitType, $dayContext), 422);
+            }
+
+            $capacity = (int) ($dayContext['type_capacities'][$visitType] ?? 0);
+            $currentCount = Booking::query()
+                ->whereDate('booking_date', $dateKey)
+                ->where('visit_type', $visitType)
+                ->lockForUpdate()
+                ->count();
             if ($currentCount >= $capacity) {
-                throw new \DomainException('عذراً، امتلأت حالات اليوم.', 409);
+                throw new \DomainException('عذراً، امتلأت حالات '.$this->visitTypeLabel($visitType).' لهذا اليوم.', 409);
             }
 
             $serial = ((int) Booking::query()->whereDate('booking_date', $dateKey)->lockForUpdate()->max('serial_number')) + 1;
@@ -94,6 +118,7 @@ class BookingService
                 'national_id' => $data['national_id'],
                 'phone' => $data['phone'],
                 'age' => (int) $data['age'],
+                'visit_type' => $visitType,
                 'device_fingerprint' => $data['fingerprint'] ?? null,
                 'ip_address' => $data['ip_address'] ?? null,
                 'serial_number' => $serial,
@@ -151,12 +176,18 @@ class BookingService
         $dayContext = $this->getDayContext($date);
         $remaining = $this->getRemainingSlots($date);
         $isOpen = $this->isBookingWindowOpen($date);
+        $visitTypes = $this->buildVisitTypeStatus($date, $dayContext);
 
         $closedMessage = null;
         if (! $isOpen) {
             if ($dayContext['is_closed']) {
                 $closedMessage = $dayContext['close_message'] ?: 'الطبيب إعتذر هذا اليوم يرجى اعادة تسجيل حالاتك في الموعد المسموح به';
-            } elseif ($remaining <= 0) {
+            } elseif (collect($visitTypes)->every(fn (array $type) => $type['is_closed'])) {
+                $closedMessage = collect($visitTypes)
+                    ->pluck('closed_message')
+                    ->filter()
+                    ->implode(' ');
+            } elseif (collect($visitTypes)->every(fn (array $type) => $type['remaining'] <= 0 || $type['is_closed'])) {
                 $closedMessage = 'عذراً، امتلأت حالات اليوم.';
             } else {
                 $closedMessage = $this->getClosedMessage();
@@ -169,7 +200,7 @@ class BookingService
                 ->whereDate('booking_date', $date->toDateString())
                 ->where('device_fingerprint', $fingerprint)
                 ->orderBy('created_at')
-                ->get(['id', 'patient_name', 'booking_date', 'created_at']);
+                ->get(['id', 'patient_name', 'booking_date', 'visit_type', 'created_at']);
         }
 
         return [
@@ -178,6 +209,7 @@ class BookingService
             'is_open' => $isOpen,
             'remaining' => $remaining,
             'total' => (int) $dayContext['capacity'],
+            'visit_types' => $visitTypes,
             'closed_message' => $closedMessage,
             'next_open_at' => $nextOpenAt?->toISOString(),
             'next_opening_ar' => $nextOpenAt ? $this->formatArabicDateTime($nextOpenAt) : null,
@@ -185,6 +217,8 @@ class BookingService
                 return [
                     'id' => $booking->id,
                     'patient_name' => $booking->patient_name,
+                    'visit_type' => $booking->visit_type,
+                    'visit_type_label' => $this->visitTypeLabel($booking->visit_type),
                     'booking_date' => optional($booking->booking_date)->toDateString(),
                     'created_at' => optional($booking->created_at)->toISOString(),
                 ];
@@ -197,6 +231,11 @@ class BookingService
         $dayContext = $this->getDayContext($date);
 
         return (int) ($dayContext['capacity'] ?? 0);
+    }
+
+    public function visitTypeLabel(?string $visitType): string
+    {
+        return $visitType === self::VISIT_TYPE_STRABISMUS ? 'حول' : 'أخرى';
     }
 
     public function formatArabicDate(Carbon $date): string
@@ -228,6 +267,7 @@ class BookingService
     private function getDayContext(Carbon $date): array
     {
         $defaultCapacity = (int) ClinicSetting::getValue('default_capacity', 65);
+        $defaultStrabismusCapacity = (int) ClinicSetting::getValue('default_strabismus_capacity', 0);
 
         $specific = ClinicDayConfig::query()
             ->whereDate('specific_date', $date->toDateString())
@@ -240,12 +280,79 @@ class BookingService
             ->first();
 
         $config = $specific ?: $weekly;
+        $capacity = (int) ($config?->capacity ?: $defaultCapacity);
+        $strabismusCapacity = $config?->strabismus_capacity;
+        $otherCapacity = $config?->other_capacity;
+
+        if ($strabismusCapacity === null && $otherCapacity === null) {
+            $strabismusCapacity = min($capacity, $defaultStrabismusCapacity);
+            $otherCapacity = max(0, $capacity - $strabismusCapacity);
+        } elseif ($strabismusCapacity === null) {
+            $strabismusCapacity = max(0, $capacity - (int) $otherCapacity);
+        } elseif ($otherCapacity === null) {
+            $otherCapacity = max(0, $capacity - (int) $strabismusCapacity);
+        }
+
+        $strabismusCapacity = max(0, (int) $strabismusCapacity);
+        $otherCapacity = max(0, (int) $otherCapacity);
 
         return [
-            'capacity' => $config?->capacity ?: $defaultCapacity,
+            'capacity' => $capacity,
+            'type_capacities' => [
+                self::VISIT_TYPE_STRABISMUS => $strabismusCapacity,
+                self::VISIT_TYPE_OTHER => $otherCapacity,
+            ],
             'is_closed' => (bool) ($config?->is_closed ?? false),
+            'type_closed' => [
+                self::VISIT_TYPE_STRABISMUS => (bool) ($config?->is_strabismus_closed ?? false),
+                self::VISIT_TYPE_OTHER => (bool) ($config?->is_other_closed ?? false),
+            ],
             'close_message' => $config?->close_message,
+            'type_close_messages' => [
+                self::VISIT_TYPE_STRABISMUS => $config?->strabismus_close_message,
+                self::VISIT_TYPE_OTHER => $config?->other_close_message,
+            ],
         ];
+    }
+
+    private function buildVisitTypeStatus(Carbon $date, array $dayContext): array
+    {
+        return collect($this->visitTypes())->mapWithKeys(function (string $visitType) use ($date, $dayContext) {
+            $isClosed = (bool) ($dayContext['type_closed'][$visitType] ?? false);
+            $remaining = $this->getRemainingSlots($date, $visitType);
+
+            return [$visitType => [
+                'value' => $visitType,
+                'label' => $this->visitTypeLabel($visitType),
+                'capacity' => (int) ($dayContext['type_capacities'][$visitType] ?? 0),
+                'remaining' => $remaining,
+                'is_closed' => $isClosed,
+                'is_available' => ! $dayContext['is_closed'] && ! $isClosed && $remaining > 0,
+                'closed_message' => $isClosed ? $this->getVisitTypeClosedMessage($visitType, $dayContext) : null,
+            ]];
+        })->all();
+    }
+
+    private function isVisitTypeAvailable(Carbon $date, string $visitType, array $dayContext): bool
+    {
+        return ! ($dayContext['type_closed'][$visitType] ?? false)
+            && $this->getRemainingSlots($date, $visitType) > 0;
+    }
+
+    private function getVisitTypeClosedMessage(string $visitType, array $dayContext): string
+    {
+        return $dayContext['type_close_messages'][$visitType]
+            ?: 'اعتذر الطبيب عن استقبال حالات '.$this->visitTypeLabel($visitType).' لهذا اليوم.';
+    }
+
+    private function normalizeVisitType(?string $visitType): string
+    {
+        return in_array($visitType, $this->visitTypes(), true) ? $visitType : self::VISIT_TYPE_OTHER;
+    }
+
+    private function visitTypes(): array
+    {
+        return [self::VISIT_TYPE_STRABISMUS, self::VISIT_TYPE_OTHER];
     }
 
     private function getUpcomingClinicDates(int $days = 21): Collection

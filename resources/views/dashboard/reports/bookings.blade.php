@@ -21,6 +21,7 @@
             من {{ $filters['from_date'] ?: '-' }}
             إلى {{ $filters['to_date'] ?: '-' }}
             | الاسم: {{ $filters['patient_name'] ?: '-' }}
+            | نوع الكشفية: {{ ($filters['visit_type'] ?? '') === 'strabismus' ? 'حول' : (($filters['visit_type'] ?? '') === 'other' ? 'أخرى' : 'الكل') }}
             | الحالة: {{ $filters['status'] ?: 'الكل' }}
         </div>
     </div>
@@ -35,6 +36,7 @@
                 <th>الهوية</th>
                 <th>الجوال</th>
                 <th>العمر</th>
+                <th>نوع الكشفية</th>
                 <th>الحالة</th>
                 <th>وقت التسجيل</th>
             </tr>
@@ -49,12 +51,13 @@
                     <td>{{ $row->national_id }}</td>
                     <td>{{ $row->phone }}</td>
                     <td>{{ $row->age }}</td>
+                    <td>{{ $row->visit_type === 'strabismus' ? 'حول' : 'أخرى' }}</td>
                     <td>{{ $row->status === 'ticket_received' ? 'تم الاستلام' : 'قيد الانتظار' }}</td>
                     <td>{{ optional($row->created_at)->format('Y-m-d H:i') }}</td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="9">لا توجد بيانات مطابقة للفلاتر.</td>
+                    <td colspan="10">لا توجد بيانات مطابقة للفلاتر.</td>
                 </tr>
             @endforelse
         </tbody>

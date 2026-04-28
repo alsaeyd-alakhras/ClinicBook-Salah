@@ -12,6 +12,7 @@ class Booking extends Model
         'national_id',
         'phone',
         'age',
+        'visit_type',
         'device_fingerprint',
         'ip_address',
         'serial_number',

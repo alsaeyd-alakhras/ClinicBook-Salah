@@ -56,6 +56,23 @@
                     <small class="field-error" data-field="age"></small>
                 </div>
 
+                <div class="field-group">
+                    <label>نوع الكشفية</label>
+                    <div class="visit-type-options" id="visitTypeOptions">
+                        <label class="visit-type-option" data-type="strabismus">
+                            <input type="radio" name="visit_type" value="strabismus" required>
+                            <span>حول</span>
+                        </label>
+                        <label class="visit-type-option" data-type="other">
+                            <input type="radio" name="visit_type" value="other" required>
+                            <span>أخرى</span>
+                        </label>
+                    </div>
+                    <small class="field-error" data-field="visit_type"></small>
+                </div>
+
+                <div id="visitTypeNotice" class="visit-type-notice" style="display:none;"></div>
+
                 <button type="submit" id="submitBtn" class="btn-primary">
                     <span class="btn-label">سجل الآن ←</span>
                     <span class="btn-spinner" aria-hidden="true"></span>
@@ -64,7 +81,7 @@
         </section>
 
         <section id="closedCard" class="card closed-box" style="display:none;">
-            <h3>🔒 الحجز مغلق حالياً</h3>
+            <h3 id="closedTitle">🔒 الحجز مغلق حالياً</h3>
             <p id="closedMessage">يرجى المحاولة لاحقاً.</p>
             <div id="nextOpenWrap" class="next-open-wrap" style="display:none;">
                 <span class="next-open-label">موعد الفتح القادم</span>
