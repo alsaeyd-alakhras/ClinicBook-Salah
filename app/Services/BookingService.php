@@ -413,9 +413,7 @@ class BookingService
 
     private function getOpeningTime(Carbon $date): Carbon
     {
-        $previousClinicDate = $this->getPreviousClinicDate($date);
-
-        return $previousClinicDate->setTime($this->getOpenHour(), 0);
+        return $date->copy()->setTime($this->getCloseHour(), 0)->subDay();
     }
 
     private function getNextOpeningTime(): ?Carbon
@@ -435,25 +433,6 @@ class BookingService
         }
 
         return null;
-    }
-
-    private function getPreviousClinicDate(Carbon $date): Carbon
-    {
-        $clinicDays = $this->getClinicDays();
-
-        for ($i = 1; $i <= 14; $i++) {
-            $candidate = $date->copy()->subDays($i);
-            if (in_array($candidate->dayOfWeek, $clinicDays, true)) {
-                return $candidate;
-            }
-        }
-
-        return $date->copy()->subDay();
-    }
-
-    private function getOpenHour(): int
-    {
-        return max(0, min(23, (int) ClinicSetting::getValue('booking_open_hour', 15)));
     }
 
     private function getCloseHour(): int

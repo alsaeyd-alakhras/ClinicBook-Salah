@@ -25,7 +25,6 @@ class SettingsController extends Controller
             'default_capacity' => (int) ClinicSetting::getValue('default_capacity', 65),
             'default_strabismus_capacity' => (int) ClinicSetting::getValue('default_strabismus_capacity', 0),
             'default_other_capacity' => (int) ClinicSetting::getValue('default_other_capacity', (int) ClinicSetting::getValue('default_capacity', 65)),
-            'booking_open_hour' => (int) ClinicSetting::getValue('booking_open_hour', 15),
             'booking_close_hour' => (int) ClinicSetting::getValue('booking_close_hour', 7),
             'clinic_days' => ClinicSetting::getValue('clinic_days', [0, 3]),
         ];
@@ -54,7 +53,6 @@ class SettingsController extends Controller
             'default_capacity' => ['required', 'integer', 'min:1', 'max:500'],
             'default_strabismus_capacity' => ['required', 'integer', 'min:0', 'max:500'],
             'default_other_capacity' => ['required', 'integer', 'min:0', 'max:500'],
-            'booking_open_hour' => ['required', 'integer', 'min:0', 'max:23'],
             'booking_close_hour' => ['required', 'integer', 'min:0', 'max:23'],
             'clinic_days' => ['required', 'array', 'min:1'],
             'clinic_days.*' => ['integer', 'between:0,6'],
@@ -78,7 +76,6 @@ class SettingsController extends Controller
         ClinicSetting::setValue('default_capacity', (int) $validated['default_capacity']);
         ClinicSetting::setValue('default_strabismus_capacity', $defaultTypeCapacities['strabismus']);
         ClinicSetting::setValue('default_other_capacity', $defaultTypeCapacities['other']);
-        ClinicSetting::setValue('booking_open_hour', (int) $validated['booking_open_hour']);
         ClinicSetting::setValue('booking_close_hour', (int) $validated['booking_close_hour']);
         ClinicSetting::setValue('clinic_days', $clinicDays);
 

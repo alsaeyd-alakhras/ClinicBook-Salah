@@ -43,12 +43,9 @@
                             </div>
 
                             <div class="col-md-3">
-                                <label class="form-label">ساعة فتح الحجز</label>
-                                <input type="number" class="form-control" name="booking_open_hour" min="0" max="23" value="{{ old('booking_open_hour', $settings['booking_open_hour']) }}" required>
-                            </div>
-                            <div class="col-md-3">
                                 <label class="form-label">ساعة إغلاق الحجز</label>
                                 <input type="number" class="form-control" name="booking_close_hour" min="0" max="23" value="{{ old('booking_close_hour', $settings['booking_close_hour']) }}" required>
+                                <small class="text-muted">يفتح الحجز تلقائياً قبل هذه الساعة بـ 24 ساعة.</small>
                             </div>
 
                             <div class="col-12">
