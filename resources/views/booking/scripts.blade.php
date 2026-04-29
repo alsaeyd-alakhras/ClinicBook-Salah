@@ -20,6 +20,7 @@
 
         const state = {
             fingerprint: null,
+            legacyFingerprint: null,
             myBookings: [],
             latestStatus: null,
         };
@@ -34,9 +35,10 @@
                 return {
                     bookings: Array.isArray(parsed.bookings) ? parsed.bookings : [],
                     fingerprint: parsed.fingerprint || null,
+                    legacyFingerprint: parsed.legacyFingerprint || null,
                 };
             } catch (e) {
-                return { bookings: [], fingerprint: null };
+                return { bookings: [], fingerprint: null, legacyFingerprint: null };
             }
         }
 
@@ -45,33 +47,47 @@
         }
 
         function generateFingerprint() {
-            const data = [
-                navigator.userAgent,
-                navigator.language,
-                screen.width + 'x' + screen.height,
-                new Date().getTimezoneOffset()
-            ].join('|');
+            if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+                return `cb_${window.crypto.randomUUID()}`;
+            }
 
-            return btoa(unescape(encodeURIComponent(data))).substring(0, 32);
+            return `cb_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 12)}`;
+        }
+
+        function isModernFingerprint(fingerprint) {
+            return typeof fingerprint === 'string' && fingerprint.indexOf('cb_') === 0;
         }
 
         function ensureFingerprint() {
             const storage = getStorage();
-            if (!storage.fingerprint) {
+            if (storage.fingerprint && !isModernFingerprint(storage.fingerprint)) {
+                storage.legacyFingerprint = storage.fingerprint;
+                storage.fingerprint = generateFingerprint();
+                setStorage(storage);
+            } else if (!storage.fingerprint) {
                 storage.fingerprint = generateFingerprint();
                 setStorage(storage);
             }
             state.fingerprint = storage.fingerprint;
+            state.legacyFingerprint = storage.legacyFingerprint || null;
             state.myBookings = storage.bookings;
         }
 
         function syncBookings(serverBookings) {
             const storage = getStorage();
             storage.fingerprint = state.fingerprint;
+            storage.legacyFingerprint = state.legacyFingerprint;
             storage.bookings = serverBookings;
             setStorage(storage);
             state.myBookings = serverBookings;
             renderMyBookings();
+        }
+
+        function localBookingIds() {
+            return getStorage().bookings
+                .map((booking) => Number(booking.id))
+                .filter((id) => Number.isInteger(id) && id > 0)
+                .join(',');
         }
 
         function showMessage(type, message) {
@@ -233,7 +249,9 @@
                 url: '/booking/status',
                 method: 'GET',
                 headers: {
-                    'X-Device-Fingerprint': state.fingerprint
+                    'X-Device-Fingerprint': state.fingerprint,
+                    'X-Legacy-Device-Fingerprint': state.legacyFingerprint || '',
+                    'X-Local-Booking-Ids': localBookingIds()
                 }
             }).done(function (response) {
                 renderStatus(response);
@@ -298,6 +316,7 @@
                 method: 'DELETE',
                 headers: {
                     'X-Device-Fingerprint': state.fingerprint,
+                    'X-Legacy-Device-Fingerprint': state.legacyFingerprint || '',
                     'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
                 }
             }).done(function (response) {

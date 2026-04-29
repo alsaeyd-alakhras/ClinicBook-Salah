@@ -25,8 +25,18 @@ class BookingController extends Controller
     public function status(Request $request): JsonResponse
     {
         $fingerprint = (string) $request->header('X-Device-Fingerprint', '');
+        $legacyFingerprint = (string) $request->header('X-Legacy-Device-Fingerprint', '');
+        $localBookingIds = collect(explode(',', (string) $request->header('X-Local-Booking-Ids', '')))
+            ->map(fn (string $id) => (int) trim($id))
+            ->filter(fn (int $id) => $id > 0)
+            ->values()
+            ->all();
 
-        return response()->json($this->bookingService->getStatusPayload($fingerprint ?: null));
+        return response()->json($this->bookingService->getStatusPayload(
+            $fingerprint ?: null,
+            $legacyFingerprint ?: null,
+            $localBookingIds,
+        ));
     }
 
     public function store(Request $request): JsonResponse
@@ -86,6 +96,7 @@ class BookingController extends Controller
     public function cancel(Request $request, int $id): JsonResponse
     {
         $fingerprint = (string) $request->header('X-Device-Fingerprint', '');
+        $legacyFingerprint = (string) $request->header('X-Legacy-Device-Fingerprint', '');
         if ($fingerprint === '') {
             return response()->json([
                 'success' => false,
@@ -95,7 +106,7 @@ class BookingController extends Controller
 
         $booking = Booking::query()->findOrFail($id);
 
-        if ($booking->device_fingerprint !== $fingerprint) {
+        if (! in_array($booking->device_fingerprint, array_filter([$fingerprint, $legacyFingerprint]), true)) {
             return response()->json([
                 'success' => false,
                 'message' => 'لا يمكن إلغاء هذا الحجز من هذا الجهاز.',

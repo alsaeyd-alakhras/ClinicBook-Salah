@@ -93,7 +93,7 @@ class BookingService
             }
 
             if ($this->checkDeviceLimit($data['phone'], $data['fingerprint'] ?? null, $data['ip_address'] ?? null, $date)) {
-                throw new \DomainException('لقد سجلت الحد المسموح به من الحالات من هذا الجهاز. إذا كنت تريد تسجيل حالة إضافية، يرجى المحاولة من جهاز آخر.', 429);
+                throw new \DomainException('تم الوصول للحد الأعلى من التسجيلات من نفس الشبكة لهذا اليوم. يرجى المحاولة لاحقاً.', 429);
             }
 
             if ($dayContext['type_closed'][$visitType] ?? false) {
@@ -141,18 +141,14 @@ class BookingService
     {
         $dateKey = $date->toDateString();
 
-        if ($fingerprint && Booking::query()->whereDate('booking_date', $dateKey)->where('device_fingerprint', $fingerprint)->count() >= 2) {
+        if ($ip && Booking::query()->whereDate('booking_date', $dateKey)->where('ip_address', $ip)->count() >= 6) {
             return true;
         }
 
-        if ($ip && Booking::query()->whereDate('booking_date', $dateKey)->where('ip_address', $ip)->count() >= 3) {
-            return true;
-        }
-
-        return Booking::query()->whereDate('booking_date', $dateKey)->where('phone', $phone)->count() >= 2;
+        return false;
     }
 
-    public function getStatusPayload(?string $fingerprint = null): array
+    public function getStatusPayload(?string $fingerprint = null, ?string $legacyFingerprint = null, array $localBookingIds = []): array
     {
         $nextOpenAt = $this->getNextOpeningTime();
 
@@ -201,6 +197,21 @@ class BookingService
                 ->where('device_fingerprint', $fingerprint)
                 ->orderBy('created_at')
                 ->get(['id', 'patient_name', 'booking_date', 'visit_type', 'created_at']);
+        }
+
+        if ($legacyFingerprint && $localBookingIds) {
+            $legacyBookings = Booking::query()
+                ->whereDate('booking_date', $date->toDateString())
+                ->where('device_fingerprint', $legacyFingerprint)
+                ->whereIn('id', $localBookingIds)
+                ->orderBy('created_at')
+                ->get(['id', 'patient_name', 'booking_date', 'visit_type', 'created_at']);
+
+            $myBookings = $myBookings
+                ->merge($legacyBookings)
+                ->unique('id')
+                ->sortBy('created_at')
+                ->values();
         }
 
         return [
