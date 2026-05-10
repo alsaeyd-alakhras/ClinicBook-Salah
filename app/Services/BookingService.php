@@ -16,6 +16,10 @@ class BookingService
 
     public function getActiveBookingDate(): ?Carbon
     {
+        if ($this->isBeforeInitialLaunch()) {
+            return null;
+        }
+
         foreach ($this->getUpcomingClinicDates($this->getBookingSearchDays()) as $date) {
             if ($this->hasAvailableBookingSlot($date)) {
                 return $date;
@@ -119,6 +123,10 @@ class BookingService
 
     public function getClosedMessage(): string
     {
+        if ($this->isBeforeInitialLaunch()) {
+            return 'الحجز مغلق حالياً. يفتح التسجيل يوم الثلاثاء 12/5/2026 الساعة 7 صباحاً.';
+        }
+
         return 'لا توجد مواعيد متاحة حالياً خلال مدة الحجز المحددة. يرجى المحاولة لاحقاً.';
     }
 
@@ -405,6 +413,11 @@ class BookingService
     private function getBookingSearchDays(): int
     {
         return max(1, min(120, (int) ClinicSetting::getValue('booking_search_days', 60)));
+    }
+
+    private function isBeforeInitialLaunch(): bool
+    {
+        return now()->lessThan(Carbon::create(2026, 5, 12, 7, 0, 0));
     }
 
     private function arabicDayName(int $day): string
