@@ -43,9 +43,15 @@
                             </div>
 
                             <div class="col-md-3">
-                                <label class="form-label">ساعة إغلاق الحجز</label>
+                                <label class="form-label">ساعة منع الإلغاء يوم الموعد</label>
                                 <input type="number" class="form-control" name="booking_close_hour" min="0" max="23" value="{{ old('booking_close_hour', $settings['booking_close_hour']) }}" required>
-                                <small class="text-muted">يفتح الحجز تلقائياً قبل هذه الساعة بـ 24 ساعة.</small>
+                                <small class="text-muted">بعد هذه الساعة لا يمكن للمريض إلغاء حجز نفس اليوم.</small>
+                            </div>
+
+                            <div class="col-md-3">
+                                <label class="form-label">مدة البحث عن موعد متاح</label>
+                                <input type="number" class="form-control" name="booking_search_days" min="1" max="120" value="{{ old('booking_search_days', $settings['booking_search_days']) }}" required>
+                                <small class="text-muted">الافتراضي 60 يوم، والحد الأعلى 120 يوم.</small>
                             </div>
 
                             <div class="col-12">

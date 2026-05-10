@@ -2,7 +2,7 @@
     <div class="app-brand demo"  style="overflow: visible">
         <a href="{{ route('dashboard.home') }}" class="app-brand-link">
             <span class="app-brand-logo demo" style="overflow: visible">
-                <img src=" {{ asset('imgs/logo-brand.png') }}" alt="Logo" width="60">
+                <img src="{{ asset('icon.png') }}" alt="Logo" width="60">
             </span>
             {{-- <span class="app-brand-text demo menu-text fw-bold">{{ $title }}</span> --}}
         </a>

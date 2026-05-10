@@ -16,10 +16,8 @@ class BookingService
 
     public function getActiveBookingDate(): ?Carbon
     {
-        $now = now();
-
-        foreach ($this->getUpcomingClinicDates(21) as $date) {
-            if ($this->isWithinWindow($date, $now)) {
+        foreach ($this->getUpcomingClinicDates($this->getBookingSearchDays()) as $date) {
+            if ($this->hasAvailableBookingSlot($date)) {
                 return $date;
             }
         }
@@ -31,10 +29,6 @@ class BookingService
     {
         $dayContext = $this->getDayContext($date);
         if ($dayContext['is_closed']) {
-            return false;
-        }
-
-        if (! $this->isWithinWindow($date, now())) {
             return false;
         }
 
@@ -75,10 +69,6 @@ class BookingService
 
             if ($dayContext['is_closed']) {
                 throw new \DomainException($dayContext['close_message'] ?: $this->getClosedMessage(), 422);
-            }
-
-            if (! $this->isWithinWindow($date, now())) {
-                throw new \DomainException($this->getClosedMessage(), 422);
             }
 
             $dateKey = $date->toDateString();
@@ -129,12 +119,7 @@ class BookingService
 
     public function getClosedMessage(): string
     {
-        $nextOpenAt = $this->getNextOpeningTime();
-        if ($nextOpenAt) {
-            return 'الحجز مغلق حالياً. يفتح التسجيل في '.$this->formatArabicDateTime($nextOpenAt).'.';
-        }
-
-        return 'الحجز مغلق حالياً. يرجى المحاولة لاحقاً.';
+        return 'لا توجد مواعيد متاحة حالياً خلال مدة الحجز المحددة. يرجى المحاولة لاحقاً.';
     }
 
     public function checkDeviceLimit(string $phone, ?string $fingerprint, ?string $ip, Carbon $date): bool
@@ -150,8 +135,6 @@ class BookingService
 
     public function getStatusPayload(?string $fingerprint = null, ?string $legacyFingerprint = null, array $localBookingIds = []): array
     {
-        $nextOpenAt = $this->getNextOpeningTime();
-
         $activeDate = $this->getActiveBookingDate();
 
         if (! $activeDate) {
@@ -162,9 +145,9 @@ class BookingService
                 'remaining' => 0,
                 'total' => 0,
                 'closed_message' => $this->getClosedMessage(),
-                'next_open_at' => $nextOpenAt?->toISOString(),
-                'next_opening_ar' => $nextOpenAt ? $this->formatArabicDateTime($nextOpenAt) : null,
-                'my_bookings' => [],
+                'next_open_at' => null,
+                'next_opening_ar' => null,
+                'my_bookings' => $this->getFutureDeviceBookings($fingerprint, $legacyFingerprint, $localBookingIds),
             ];
         }
 
@@ -190,29 +173,7 @@ class BookingService
             }
         }
 
-        $myBookings = collect();
-        if ($fingerprint) {
-            $myBookings = Booking::query()
-                ->whereDate('booking_date', $date->toDateString())
-                ->where('device_fingerprint', $fingerprint)
-                ->orderBy('created_at')
-                ->get(['id', 'patient_name', 'booking_date', 'visit_type', 'created_at']);
-        }
-
-        if ($legacyFingerprint && $localBookingIds) {
-            $legacyBookings = Booking::query()
-                ->whereDate('booking_date', $date->toDateString())
-                ->where('device_fingerprint', $legacyFingerprint)
-                ->whereIn('id', $localBookingIds)
-                ->orderBy('created_at')
-                ->get(['id', 'patient_name', 'booking_date', 'visit_type', 'created_at']);
-
-            $myBookings = $myBookings
-                ->merge($legacyBookings)
-                ->unique('id')
-                ->sortBy('created_at')
-                ->values();
-        }
+        $myBookings = $this->getFutureDeviceBookings($fingerprint, $legacyFingerprint, $localBookingIds);
 
         return [
             'booking_date' => $date->toDateString(),
@@ -222,18 +183,9 @@ class BookingService
             'total' => (int) $dayContext['capacity'],
             'visit_types' => $visitTypes,
             'closed_message' => $closedMessage,
-            'next_open_at' => $nextOpenAt?->toISOString(),
-            'next_opening_ar' => $nextOpenAt ? $this->formatArabicDateTime($nextOpenAt) : null,
-            'my_bookings' => $myBookings->map(function (Booking $booking) {
-                return [
-                    'id' => $booking->id,
-                    'patient_name' => $booking->patient_name,
-                    'visit_type' => $booking->visit_type,
-                    'visit_type_label' => $this->visitTypeLabel($booking->visit_type),
-                    'booking_date' => optional($booking->booking_date)->toDateString(),
-                    'created_at' => optional($booking->created_at)->toISOString(),
-                ];
-            })->values()->all(),
+            'next_open_at' => null,
+            'next_opening_ar' => null,
+            'my_bookings' => $myBookings,
         ];
     }
 
@@ -257,21 +209,6 @@ class BookingService
             $date->day,
             $date->month,
             $date->year
-        );
-    }
-
-    private function formatArabicDateTime(Carbon $date): string
-    {
-        $period = $date->hour >= 12 ? 'مساءً' : 'صباحاً';
-
-        return sprintf(
-            '%s %d/%d/%d الساعة %s %s',
-            $this->arabicDayName($date->dayOfWeek),
-            $date->day,
-            $date->month,
-            $date->year,
-            $this->toArabicHourLabel($date->hour),
-            $period
         );
     }
 
@@ -346,8 +283,70 @@ class BookingService
 
     private function isVisitTypeAvailable(Carbon $date, string $visitType, array $dayContext): bool
     {
+        if ($dayContext['is_closed']) {
+            return false;
+        }
+
         return ! ($dayContext['type_closed'][$visitType] ?? false)
             && $this->getRemainingSlots($date, $visitType) > 0;
+    }
+
+    private function hasAvailableBookingSlot(Carbon $date): bool
+    {
+        $dayContext = $this->getDayContext($date);
+
+        if ($dayContext['is_closed']) {
+            return false;
+        }
+
+        return collect($this->visitTypes())
+            ->contains(fn (string $visitType) => $this->isVisitTypeAvailable($date, $visitType, $dayContext));
+    }
+
+    private function getFutureDeviceBookings(?string $fingerprint, ?string $legacyFingerprint, array $localBookingIds): array
+    {
+        $startDate = now()->copy()->addDay()->toDateString();
+        $endDate = now()->copy()->addDays($this->getBookingSearchDays())->toDateString();
+        $myBookings = collect();
+
+        if ($fingerprint) {
+            $myBookings = Booking::query()
+                ->whereBetween('booking_date', [$startDate, $endDate])
+                ->where('device_fingerprint', $fingerprint)
+                ->orderBy('booking_date')
+                ->orderBy('created_at')
+                ->get(['id', 'patient_name', 'booking_date', 'visit_type', 'created_at']);
+        }
+
+        if ($legacyFingerprint && $localBookingIds) {
+            $legacyBookings = Booking::query()
+                ->whereBetween('booking_date', [$startDate, $endDate])
+                ->where('device_fingerprint', $legacyFingerprint)
+                ->whereIn('id', $localBookingIds)
+                ->orderBy('booking_date')
+                ->orderBy('created_at')
+                ->get(['id', 'patient_name', 'booking_date', 'visit_type', 'created_at']);
+
+            $myBookings = $myBookings
+                ->merge($legacyBookings)
+                ->unique('id')
+                ->sortBy([['booking_date', 'asc'], ['created_at', 'asc']])
+                ->values();
+        }
+
+        return $myBookings->map(function (Booking $booking) {
+            $bookingDate = Carbon::parse($booking->booking_date);
+
+            return [
+                'id' => $booking->id,
+                'patient_name' => $booking->patient_name,
+                'visit_type' => $booking->visit_type,
+                'visit_type_label' => $this->visitTypeLabel($booking->visit_type),
+                'booking_date' => $bookingDate->toDateString(),
+                'booking_date_ar' => $this->formatArabicDate($bookingDate),
+                'created_at' => optional($booking->created_at)->toISOString(),
+            ];
+        })->values()->all();
     }
 
     private function getVisitTypeClosedMessage(string $visitType, array $dayContext): string
@@ -369,10 +368,10 @@ class BookingService
     private function getUpcomingClinicDates(int $days = 21): Collection
     {
         $clinicDays = $this->getClinicDays();
-        $start = now()->copy()->startOfDay();
+        $start = now()->copy()->addDay()->startOfDay();
 
         $dates = collect();
-        for ($i = 0; $i <= $days; $i++) {
+        for ($i = 0; $i < $days; $i++) {
             $date = $start->copy()->addDays($i);
             if (in_array($date->dayOfWeek, $clinicDays, true)) {
                 $dates->push($date);
@@ -403,41 +402,9 @@ class BookingService
             ->all();
     }
 
-    private function isWithinWindow(Carbon $date, Carbon $now): bool
+    private function getBookingSearchDays(): int
     {
-        $openAt = $this->getOpeningTime($date);
-        $closeAt = $date->copy()->setTime($this->getCloseHour(), 0);
-
-        return $now->greaterThanOrEqualTo($openAt) && $now->lessThan($closeAt);
-    }
-
-    private function getOpeningTime(Carbon $date): Carbon
-    {
-        return $date->copy()->setTime($this->getCloseHour(), 0)->subDay();
-    }
-
-    private function getNextOpeningTime(): ?Carbon
-    {
-        $now = now();
-
-        foreach ($this->getUpcomingClinicDates(45) as $date) {
-            $dayContext = $this->getDayContext($date);
-            if ($dayContext['is_closed']) {
-                continue;
-            }
-
-            $openingTime = $this->getOpeningTime($date);
-            if ($openingTime->greaterThan($now)) {
-                return $openingTime;
-            }
-        }
-
-        return null;
-    }
-
-    private function getCloseHour(): int
-    {
-        return max(0, min(23, (int) ClinicSetting::getValue('booking_close_hour', 7)));
+        return max(1, min(120, (int) ClinicSetting::getValue('booking_search_days', 60)));
     }
 
     private function arabicDayName(int $day): string
@@ -455,13 +422,4 @@ class BookingService
         return $map[$day] ?? '';
     }
 
-    private function toArabicHourLabel(int $hour): string
-    {
-        $normalized = $hour % 12;
-        if ($normalized === 0) {
-            $normalized = 12;
-        }
-
-        return (string) $normalized;
-    }
 }

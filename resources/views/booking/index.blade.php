@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>موعد - تسجيل حجز المريض</title>
+    <link rel="icon" type="image/png" href="{{ asset('icon.png') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet">
@@ -84,7 +85,7 @@
             <h3 id="closedTitle">🔒 الحجز مغلق حالياً</h3>
             <p id="closedMessage">يرجى المحاولة لاحقاً.</p>
             <div id="nextOpenWrap" class="next-open-wrap" style="display:none;">
-                <span class="next-open-label">موعد الفتح القادم</span>
+                <span class="next-open-label">أقرب موعد متاح</span>
                 <strong id="nextOpenText">-</strong>
             </div>
         </section>

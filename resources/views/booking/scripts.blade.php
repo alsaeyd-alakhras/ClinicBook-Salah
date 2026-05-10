@@ -161,7 +161,9 @@
             $statusCard.addClass('fade-update');
             setTimeout(() => $statusCard.removeClass('fade-update'), 420);
 
-            const myBookingsCount = Array.isArray(data.my_bookings) ? data.my_bookings.length : 0;
+            const myBookingsCount = Array.isArray(data.my_bookings)
+                ? data.my_bookings.filter((booking) => booking.booking_date === data.booking_date).length
+                : 0;
             const reachedLimit = myBookingsCount >= 2;
 
             if (data.is_open && reachedLimit) {
@@ -235,7 +237,7 @@
             const html = state.myBookings.map((b, index) => {
                 return `
                     <div class="my-booking-item">
-                        <div>${index + 1}. ${b.patient_name} <small>(${b.visit_type_label || 'أخرى'})</small></div>
+                        <div>${index + 1}. ${b.patient_name} <small>(${b.visit_type_label || 'أخرى'} - ${b.booking_date_ar || b.booking_date || '-'})</small></div>
                         <button class="cancel-btn" data-id="${b.id}" data-name="${b.patient_name}">اعتذار</button>
                     </div>
                 `;

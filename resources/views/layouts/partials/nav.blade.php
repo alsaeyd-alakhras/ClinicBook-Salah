@@ -4,7 +4,7 @@
     <div class="py-0 navbar-brand app-brand demo d-none d-xl-flex me-4" style="overflow: visible">
         <a href="{{ route('dashboard.home') }}" class="app-brand-link" style="overflow: visible;">
             <span class="app-brand-logo demo" style="overflow: visible; width: 100px !important;">
-                <img src=" {{ asset('imgs/logo-brand.png') }}" alt="Logo" width="100">
+                <img src="{{ asset('imgs/logo-brand.png') }}" alt="Logo" width="100">
             </span>
             <span class="app-brand-text demo menu-text fw-bold">{{ $title }}</span>
         </a>
