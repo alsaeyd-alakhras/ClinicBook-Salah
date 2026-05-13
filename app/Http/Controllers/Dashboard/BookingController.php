@@ -6,6 +6,7 @@ use App\Exports\BookingsExport;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Services\BookingService;
+use Carbon\Carbon;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
@@ -23,6 +24,7 @@ class BookingController extends Controller
         $this->authorize('view', Booking::class);
 
         if ($request->ajax()) {
+            $resolvedDate = $this->resolveDateForRequest($request);
             $query = $this->filteredQuery($request);
 
             return DataTables::eloquent($query)
@@ -33,13 +35,14 @@ class BookingController extends Controller
                 ->addColumn('status_label', fn (Booking $booking) => $booking->status === 'ticket_received' ? 'تم الاستلام' : 'قيد الانتظار')
                 ->addColumn('actions', fn (Booking $booking) => $booking->id)
                 ->rawColumns(['actions'])
+                ->with('resolved_date', $resolvedDate)
                 ->make(true);
         }
 
-        $activeDate = $this->bookingService->getActiveBookingDate();
+        $defaultDate = $this->resolveNearestBookingsDate(now());
 
         return view('dashboard.bookings.index', [
-            'defaultDate' => $activeDate?->format('Y-m-d'),
+            'defaultDate' => $defaultDate,
         ]);
     }
 
@@ -95,12 +98,15 @@ class BookingController extends Controller
     private function filteredQuery(Request $request)
     {
         $query = Booking::query();
+        $resolvedDate = $this->resolveDateForRequest($request);
 
-        if ($request->filled('from_date')) {
+        if ($resolvedDate) {
+            $query->whereDate('booking_date', $resolvedDate);
+        } elseif ($request->filled('from_date')) {
             $query->whereDate('booking_date', '>=', $request->from_date);
         }
 
-        if ($request->filled('to_date')) {
+        if (! $resolvedDate && $request->filled('to_date')) {
             $query->whereDate('booking_date', '<=', $request->to_date);
         }
 
@@ -116,13 +122,40 @@ class BookingController extends Controller
             $query->where('visit_type', $request->visit_type);
         }
 
+        return $query->orderByDesc('booking_date')->orderBy('serial_number');
+    }
+
+    private function resolveDateForRequest(Request $request): ?string
+    {
         if (! $request->filled('from_date') && ! $request->filled('to_date')) {
-            $activeDate = $this->bookingService->getActiveBookingDate();
-            if ($activeDate) {
-                $query->whereDate('booking_date', $activeDate->toDateString());
-            }
+            return $this->resolveNearestBookingsDate(now());
         }
 
-        return $query->orderByDesc('booking_date')->orderBy('serial_number');
+        if ($request->filled('from_date') && $request->filled('to_date') && $request->from_date === $request->to_date) {
+            return $this->resolveNearestBookingsDate(Carbon::parse($request->from_date));
+        }
+
+        return null;
+    }
+
+    private function resolveNearestBookingsDate(Carbon $date): ?string
+    {
+        $dateKey = $date->toDateString();
+
+        $nextDate = Booking::query()
+            ->whereDate('booking_date', '>=', $dateKey)
+            ->orderBy('booking_date')
+            ->value('booking_date');
+
+        if ($nextDate) {
+            return Carbon::parse($nextDate)->toDateString();
+        }
+
+        $previousDate = Booking::query()
+            ->whereDate('booking_date', '<', $dateKey)
+            ->orderByDesc('booking_date')
+            ->value('booking_date');
+
+        return $previousDate ? Carbon::parse($previousDate)->toDateString() : null;
     }
 }

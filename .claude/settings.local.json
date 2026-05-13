@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(update-config)",
+      "Skill(update-config:*)",
+      "Bash(Remove-Item \"C:\\\\Users\\\\alsae\\\\.claude\\\\mcp.json\" -ErrorAction SilentlyContinue)"
+    ]
+  }
+}

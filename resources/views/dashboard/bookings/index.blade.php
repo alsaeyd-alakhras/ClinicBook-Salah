@@ -203,6 +203,14 @@
                         d.patient_name = $('#patient_name').val();
                         d.status = $('#status').val();
                         d.visit_type = $('#visit_type').val();
+                    },
+                    dataSrc: function (json) {
+                        if (json.resolved_date) {
+                            $('#from_date').val(json.resolved_date);
+                            $('#to_date').val(json.resolved_date);
+                        }
+
+                        return json.data;
                     }
                 },
                 columns: [
@@ -262,6 +270,13 @@
 
             $('#filterBtn').on('click', function () {
                 table.ajax.reload();
+            });
+
+            $('#patient_name, #from_date, #to_date, #visit_type, #status').on('keydown', function (event) {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    table.ajax.reload();
+                }
             });
 
             $('#resetBtn').on('click', function () {
