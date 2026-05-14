@@ -41,21 +41,38 @@
                 </h4>
                 <p class="mb-6">الرجاء تسجيل الدخول لبداية العمل </p>
 
+                @if ($errors->any())
+                    <div class="alert alert-danger" role="alert">
+                        <ul class="mb-0 ps-4">
+                            @foreach ($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
+
                 <form id="formAuthentication" class="mb-6" action="{{ route('login') }}" method="POST">
                     @csrf
                     <div class="mb-6">
                         <label for="username" class="form-label">اسم المستخدم / الإيميل</label>
-                        <input type="text" class="form-control" id="username" name="username"
+                        <input type="text" class="form-control @error('username') is-invalid @enderror" id="username"
+                            name="username" value="{{ old('username') }}"
                             placeholder="الرجاء إدخال اسم المستخدم أو الإيميل" autofocus />
+                        @error('username')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
                     </div>
                     <div class="mb-6 form-password-toggle">
                         <label class="form-label" for="password">كلمة المرور</label>
                         <div class="input-group input-group-merge">
-                            <input type="password" id="password" class="form-control" name="password"
+                            <input type="password" id="password" class="form-control @error('password') is-invalid @enderror" name="password"
                                 placeholder="&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;"
                                 aria-describedby="password" />
                             <span class="cursor-pointer input-group-text"><i class="ti ti-eye-off"></i></span>
                         </div>
+                        @error('password')
+                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                        @enderror
                     </div>
                     <div class="my-8">
                         <div class="d-flex justify-content-between">

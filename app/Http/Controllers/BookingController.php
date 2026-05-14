@@ -47,6 +47,7 @@ class BookingController extends Controller
             'phone' => ['required', 'regex:/^05\d{8}$/'],
             'age' => ['required', 'integer', 'min:1', 'max:120'],
             'visit_type' => ['required', 'in:strabismus,other'],
+            'booking_date' => ['required', 'date_format:Y-m-d'],
             'fingerprint' => ['nullable', 'string', 'max:255'],
         ]);
 

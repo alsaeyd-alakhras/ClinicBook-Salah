@@ -26,6 +26,24 @@
         <section class="card day-box" id="statusCard">
             <h2>الحجز ليوم</h2>
             <div id="bookingDate" class="booking-date">-</div>
+            <button type="button" id="toggleDatePicker" class="date-picker-toggle" aria-expanded="false" aria-controls="datePickerPanel">
+                <span>اختيار تاريخ الحجز</span>
+                <small>اضغط هنا لو بدك يوم ثاني متاح</small>
+            </button>
+            <div id="datePickerPanel" class="date-picker-popover" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="datePickerTitle">
+                <div class="date-picker-backdrop" data-close-date-picker></div>
+                <div class="date-picker-dialog">
+                    <div class="date-picker-header">
+                        <div>
+                            <h3 id="datePickerTitle">اختيار تاريخ الحجز</h3>
+                            <p>اختر اليوم الأنسب لك، وسنكمل الحجز عليه مباشرة.</p>
+                        </div>
+                        <button type="button" class="date-picker-close" data-close-date-picker aria-label="إغلاق">×</button>
+                    </div>
+                    <div class="date-picker-hint">الأيام الظاهرة هي الأيام التي يمكن الحجز عليها الآن.</div>
+                    <div id="availableDatesList" class="available-dates-list"></div>
+                </div>
+            </div>
         </section>
 
         <section id="messageBox" class="message-box" style="display:none;"></section>
@@ -33,6 +51,9 @@
         <section id="bookingFormCard" class="card">
             <h3>بيانات التسجيل</h3>
             <form id="bookingForm" novalidate>
+                <input type="hidden" id="booking_date" name="booking_date">
+                <small class="field-error date-field-error" data-field="booking_date"></small>
+
                 <div class="field-group">
                     <label for="patient_name">الاسم الكامل</label>
                     <input type="text" id="patient_name" name="patient_name" maxlength="100" required>

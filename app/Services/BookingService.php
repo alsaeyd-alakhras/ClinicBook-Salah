@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 class BookingService
 {
     public const VISIT_TYPE_STRABISMUS = 'strabismus';
+
     public const VISIT_TYPE_OTHER = 'other';
 
     public function getActiveBookingDate(): ?Carbon
@@ -20,13 +21,18 @@ class BookingService
             return null;
         }
 
-        foreach ($this->getUpcomingClinicDates($this->getBookingSearchDays()) as $date) {
-            if ($this->hasAvailableBookingSlot($date)) {
-                return $date;
-            }
+        return $this->getAvailableBookingDates()->first();
+    }
+
+    public function getAvailableBookingDates(): Collection
+    {
+        if ($this->isBeforeInitialLaunch()) {
+            return collect();
         }
 
-        return null;
+        return $this->getUpcomingClinicDates($this->getBookingSearchDays())
+            ->filter(fn (Carbon $date) => $this->hasAvailableBookingSlot($date))
+            ->values();
     }
 
     public function isBookingWindowOpen(Carbon $date): bool
@@ -63,12 +69,11 @@ class BookingService
     public function createBooking(array $data): Booking
     {
         return DB::transaction(function () use ($data) {
-            $activeDate = $this->getActiveBookingDate();
-            if (! $activeDate) {
+            $date = $this->resolveBookingDate($data['booking_date'] ?? null);
+            if (! $date) {
                 throw new \DomainException($this->getClosedMessage(), 422);
             }
 
-            $date = $activeDate->copy()->startOfDay();
             $dayContext = $this->getDayContext($date);
 
             if ($dayContext['is_closed']) {
@@ -144,6 +149,7 @@ class BookingService
     public function getStatusPayload(?string $fingerprint = null, ?string $legacyFingerprint = null, array $localBookingIds = []): array
     {
         $activeDate = $this->getActiveBookingDate();
+        $availableDates = $this->buildAvailableDatesPayload();
 
         if (! $activeDate) {
             return [
@@ -155,6 +161,7 @@ class BookingService
                 'closed_message' => $this->getClosedMessage(),
                 'next_open_at' => null,
                 'next_opening_ar' => null,
+                'available_dates' => $availableDates,
                 'my_bookings' => $this->getFutureDeviceBookings($fingerprint, $legacyFingerprint, $localBookingIds),
             ];
         }
@@ -193,6 +200,7 @@ class BookingService
             'closed_message' => $closedMessage,
             'next_open_at' => null,
             'next_opening_ar' => null,
+            'available_dates' => $availableDates,
             'my_bookings' => $myBookings,
         ];
     }
@@ -287,6 +295,46 @@ class BookingService
                 'closed_message' => $isClosed ? $this->getVisitTypeClosedMessage($visitType, $dayContext) : null,
             ]];
         })->all();
+    }
+
+    private function buildAvailableDatesPayload(): array
+    {
+        return $this->getAvailableBookingDates()
+            ->map(function (Carbon $date) {
+                $dayContext = $this->getDayContext($date);
+
+                return [
+                    'date' => $date->toDateString(),
+                    'date_ar' => $this->formatArabicDate($date),
+                    'remaining' => $this->getRemainingSlots($date),
+                    'total' => (int) $dayContext['capacity'],
+                    'visit_types' => $this->buildVisitTypeStatus($date, $dayContext),
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    private function resolveBookingDate(?string $bookingDate): ?Carbon
+    {
+        if (! $bookingDate) {
+            return $this->getActiveBookingDate()?->copy()->startOfDay();
+        }
+
+        try {
+            $date = Carbon::createFromFormat('Y-m-d', $bookingDate)->startOfDay();
+        } catch (\Throwable) {
+            return null;
+        }
+
+        $isAvailable = $this->getAvailableBookingDates()
+            ->contains(fn (Carbon $availableDate) => $availableDate->isSameDay($date));
+
+        if (! $isAvailable) {
+            throw new \DomainException('التاريخ المختار غير متاح للحجز. يرجى اختيار يوم آخر من الأيام المتاحة.', 422);
+        }
+
+        return $date;
     }
 
     private function isVisitTypeAvailable(Carbon $date, string $visitType, array $dayContext): bool
@@ -434,5 +482,4 @@ class BookingService
 
         return $map[$day] ?? '';
     }
-
 }
